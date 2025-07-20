@@ -7,6 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -14,6 +15,7 @@ import com.litelaunch.app.auth.AuthViewModel
 import com.litelaunch.app.ui.screens.HomeScreen
 import com.litelaunch.app.ui.screens.LoginScreen
 import com.litelaunch.app.ui.screens.RegisterScreen
+import com.litelaunch.app.ui.screens.SplashScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -21,48 +23,25 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val authViewModel: AuthViewModel = viewModel()
             val navController = rememberNavController()
-            val viewModel = remember { AuthViewModel() }
-            val loginState by viewModel.loginState.collectAsState()
 
-            // Navigate to home screen after login/register
-            LaunchedEffect(loginState) {
-                if (loginState == "success" || loginState == "registered") {
-                    navController.navigate("home") {
-                        popUpTo("login") { inclusive = true }
-                    }
+            val startDestination = "splash" // instead of login/home directly
+
+            NavHost(navController = navController, startDestination = startDestination) {
+                composable("splash") {
+                    SplashScreen(navController, authViewModel)
                 }
-            }
-
-            NavHost(navController = navController, startDestination = "login") {
                 composable("login") {
-                    LoginScreen(
-                        viewModel = viewModel,
-                        onNavigateToHome = {
-                            navController.navigate("home") {
-                                popUpTo("login") {
-                                    inclusive = true
-                                } // Optional: remove login from backstack
-                            }
-                        },
-                        onNavigateToRegister = {
-                            navController.navigate("register")
-                        }
-                    )
+                    LoginScreen(navController, authViewModel)
                 }
                 composable("register") {
-                    RegisterScreen(
-                        viewModel = viewModel,
-                        onNavigateToLogin = {
-                            navController.popBackStack() // go back to login screen
-                        }
-                    )
+                    RegisterScreen(navController, authViewModel)
                 }
                 composable("home") {
-                    HomeScreen()
+                    HomeScreen(navController, authViewModel)
                 }
             }
-
         }
     }
 }

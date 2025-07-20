@@ -1,5 +1,6 @@
 package com.litelaunch.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,77 +23,69 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.litelaunch.app.auth.AuthViewModel
 
 @Composable
 fun LoginScreen(
-    viewModel: AuthViewModel,
-    onNavigateToHome: () -> Unit,
-    onNavigateToRegister: () -> Unit
-){
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    var showResetConfirmation by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val loginState by viewModel.loginState.collectAsState()
-
-    LaunchedEffect(loginState) {
-        if (loginState == "success") {
-            onNavigateToHome()
-        }
-    }
-
+    val loginState by authViewModel.loginState.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Login", style = MaterialTheme.typography.headlineSmall)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
+        Text("Login", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { viewModel.login(email.trim(), password.trim()) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        TextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
+        Spacer(modifier = Modifier.height(8.dp))
+        TextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation())
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = {
+            authViewModel.login(email, password) {
+                navController.navigate("home") {
+                    popUpTo("login") { inclusive = true }
+                }
+            }
+        }) {
             Text("Log In")
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(onClick = onNavigateToRegister) {
-            Text("Don't have an account? Register")
+        TextButton(onClick = {
+            if (email.isNotEmpty()) {
+                authViewModel.sendPasswordReset(
+                    email = email,
+                    onSuccess = { showResetConfirmation = true },
+                    onFailure = { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+                )
+            } else {
+                Toast.makeText(context, "Please enter your email first", Toast.LENGTH_SHORT).show()
+            }
+        }) {
+            Text("Forgot Password?")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        if (showResetConfirmation) {
+            Text("Password reset email sent!", color = Color.Green)
+        }
 
-        loginState?.takeIf { it != "success" }?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error)
+        Spacer(modifier = Modifier.height(12.dp))
+        if (loginState != null && loginState != "logged_in") {
+            Text(text = loginState ?: "", color = Color.Red)
         }
     }
 }
+
 
